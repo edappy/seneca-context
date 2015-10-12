@@ -18,5 +18,18 @@
   "bugs": {
     "url": "https://github.com/LSEducation/seneca-context/issues"
   },
-  "homepage": "https://github.com/LSEducation/seneca-context"
+  "homepage": "https://github.com/LSEducation/seneca-context",
+  "dependencies": {
+    "debug": "^2.2.0",
+    "extend": "^3.0.0",
+    "vasync": "^1.6.3"
+  },
+  "peerDependencies": {
+    "seneca": "^0.7.1"
+  },
+  "devDependencies": {
+    "body-parser": "^1.14.1",
+    "express": "^4.13.3",
+    "seneca": "^0.7.1"
+  }
 }
