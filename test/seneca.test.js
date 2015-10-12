@@ -8,12 +8,12 @@ var extend = require('extend');
 
 describe('seneca-context', function () {
     describe('end-to-end', function () {
-        var app, server, seneca1, seneca2, senecaContext, task1Spy, task2Spy, task3Spy;
+        var app, server, seneca1, seneca2, senecaContext;
 
         beforeEach(function (done) {
             senecaContext = createSenecaContext({
                 createContext: function (req, res, context, done) {
-                    done(null, extend({test: 'abc'}, context));
+                    process.nextTick(done.bind(null, null, extend({test: 'abc'}, context)));
                 },
                 contextHeader: 'x-context'
             });
@@ -21,16 +21,19 @@ describe('seneca-context', function () {
             // set up seneca1
             // --------------
             seneca1 = createSeneca();
-            task1Spy = sinon.spy(function task1(message, done) {
-                this.act('role:seneca2,cmd:task2', done);
+            seneca1.add('role:seneca1,cmd:task1', function task1(message, done) {
+                try {
+                    expect(message.context$).to.be.undefined;
+                    this.act('role:seneca2,cmd:task2', {trace: message.trace + '1'}, done);
+                } catch (e) {
+                    done(e);
+                }
             });
-            task3Spy = sinon.spy(function task3(message, done) {
-                done(null, message.context$);
+            seneca1.add('role:seneca1,cmd:task3', function task3(message, done) {
+                done(null, {trace: message.trace + '3', context: message.context$});
             });
-            seneca1.add('role:seneca1,cmd:task1', task1Spy);
-            seneca1.add('role:seneca1,cmd:task3', task3Spy);
             seneca1.use(senecaContext.saveContextPlugin);
-            seneca1.use(senecaContext.loadContextPlugin, {pin: 'role:seneca1'});
+            seneca1.use(senecaContext.loadContextPlugin, {pin: 'role:seneca1,cmd:task3'});
             seneca1.act('role:web', {
                 use: {
                     prefix: '/',
@@ -46,10 +49,14 @@ describe('seneca-context', function () {
             // set up seneca2
             // --------------
             seneca2 = createSeneca();
-            task2Spy = sinon.spy(function task2(message, done) {
-                this.act('role:seneca1,cmd:task3', done);
+            seneca2.add('role:seneca2,cmd:task2', function task2(message, done) {
+                try {
+                    expect(message.context$).to.be.undefined;
+                    this.act('role:seneca1,cmd:task3', {trace: message.trace + '2'}, done);
+                } catch (e) {
+                    done(e);
+                }
             });
-            seneca2.add('role:seneca2,cmd:task2', task2Spy);
             seneca2.client({port: 9010});
             seneca2.listen({port: 9011});
 
@@ -85,7 +92,7 @@ describe('seneca-context', function () {
             http.get({
                 hostname: '127.0.0.1',
                 port: 3010,
-                path: '/task1',
+                path: '/task1?trace=request',
                 headers: {
                     'X-Context': requestId
                 }
@@ -97,13 +104,55 @@ describe('seneca-context', function () {
                 res.on('end', function () {
                     try {
                         var response = JSON.parse(responseText);
-                        response.should.deep.equal({requestId: requestId, test: 'abc'});
+                        response.should.deep.equal({context: {requestId: requestId, test: 'abc'}, trace: 'request123'});
                         done();
                     } catch (error) {
                         done(error);
                     }
                 });
             });
+        });
+    });
+
+    describe('saveContext and loadContext', function () {
+        var seneca, senecaContext;
+
+        beforeEach(function () {
+            seneca = createSeneca();
+            senecaContext = createSenecaContext();
+        });
+
+        afterEach(function (done) {
+            seneca.close(done);
+        });
+
+        it('should save and load context', function (done) {
+            var testContext = {a: {b: 1, hello: 'world', l: [2, 3]}};
+            var testContext2 = {z: 9};
+            seneca.add('role:test,cmd:run', function (message, respond) {
+                var seneca = this;
+                vasync.waterfall([
+                    senecaContext.loadContext.bind(senecaContext, seneca),
+                    function (context, next) {
+                        expect(context).to.be.null;
+                        next();
+                    },
+                    senecaContext.saveContext.bind(senecaContext, seneca, testContext),
+                    senecaContext.loadContext.bind(senecaContext, seneca),
+                    function (context, next) {
+                        expect(context).to.deep.equal(testContext);
+                        next();
+                    },
+                    senecaContext.saveContext.bind(senecaContext, seneca, testContext2),
+                    senecaContext.loadContext.bind(senecaContext, seneca),
+                    function (context, next) {
+                        expect(context).to.deep.equal(testContext2);
+                        next();
+                    }
+                ], respond);
+            });
+
+            seneca.act('role:test,cmd:run', done);
         });
     });
 });
