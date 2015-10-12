@@ -1,42 +1,31 @@
 'use strict';
 
 var seneca = require('seneca')();
-var contextManager = require('./index')();
+var contextManager = require('../index')();
 var app = require('express')();
 var bodyParser = require('body-parser');
+var debug = require('debug')('seneca-context-example');
 
 // configure seneca
 // ----------------
-//seneca.add('role:worker,cmd:work', function (message, done) {
-//    console.log('Got message 1', message.tx$);
-//    this.act('role:worker2,cmd:wait', done);
-//});
-
-seneca.add('role:worker2,cmd:wait', function (message, done) {
-    console.log('Got message 2', message.tx$, message);
-    contextManager.loadContext(this, function (error, context) {
-        if (error) {
-            done(error);
-        } else {
-            done(null, {
-                context: context
-            });
-        }
-    });
-});
-
 seneca.add('role:api,path:work', function (message, done) {
+    debug('role:api,path:work', message.tx$, message.context$);
     this.act('role:worker,cmd:work', done);
+});
+seneca.add('role:worker2,cmd:wait', function (message, done) {
+    debug('role:worker2,cmd:wait', message.tx$, message.context$);
+    done(null, message.context$);
 });
 
 seneca.use(contextManager.saveContextPlugin);
+seneca.use(contextManager.loadContextPlugin, {pin: 'role:worker2'});
 
 seneca.act('role:web', {
     use: {
         prefix: '/api',
         pin: 'role:api,path:*',
         map: {
-            work: {GET: true, data: true}
+            work: {GET: true}
         }
     }
 });

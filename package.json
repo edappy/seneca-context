@@ -1,6 +1,6 @@
 {
   "name": "seneca-context",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Generate a context object based on an HTTP request and easily access it any seneca services involved in processing that request.",
   "main": "index.js",
   "scripts": {

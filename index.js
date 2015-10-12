@@ -59,12 +59,13 @@ function createContextStore(options) {
      * Saves the specified context inside the seneca transaction ID.
      */
     function saveContext(seneca, context, done) {
+        debug('saveContext - start');
         var transactionIdPrefix = seneca.fixedargs.tx$.split('?')[0];
         var encodedContext = new Buffer(JSON.stringify(context)).toString('base64');
         var transactionId = transactionIdPrefix + '?' + encodedContext;
         seneca.fixedargs.tx$ = transactionId;
 
-        debug('saveContext', transactionId, context);
+        debug('saveContext - end', transactionId, context);
         process.nextTick(done.bind(null, null));
     }
 
@@ -72,11 +73,12 @@ function createContextStore(options) {
      * Loads the context from the seneca transaction ID.
      */
     function loadContext(seneca, done) {
+        debug('loadContext - start')
         var transactionId = seneca.fixedargs.tx$;
         var encodedContext = transactionId.split('?')[1];
         var context = encodedContext ? JSON.parse(new Buffer(encodedContext, 'base64').toString('utf8')) : null;
 
-        debug('loadContext', transactionId, context);
+        debug('loadContext - end', transactionId, context);
         process.nextTick(done.bind(null, null, context));
     }
 
@@ -104,7 +106,12 @@ function createContextStore(options) {
         var plugin = 'load-context';
 
         seneca.wrap(options.pin, function (message, done) {
-            loadContext(seneca, function (context) {
+            var seneca = this;
+            loadContext(seneca, function (error, context) {
+                if (error) {
+                    return done(error);
+                }
+
                 message.context$ = context;
                 seneca.prior(message, done);
             });
@@ -140,7 +147,6 @@ function createContextStore(options) {
         }
 
         debug('created default context', context);
-
         done(null, context);
     }
 
