@@ -4,7 +4,7 @@
   "description": "Generate a context object based on an HTTP request and easily access it any seneca services involved in processing that request.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "./node_modules/.bin/mocha -r ./test/init.js './test/**/*.test.js'"
   },
   "repository": {
     "type": "git",
@@ -29,7 +29,11 @@
   },
   "devDependencies": {
     "body-parser": "^1.14.1",
+    "chai": "^3.3.0",
     "express": "^4.13.3",
-    "seneca": "^0.7.1"
+    "mocha": "^2.3.3",
+    "seneca": "^0.7.1",
+    "sinon": "^1.17.1",
+    "sinon-chai": "^2.8.0"
   }
 }

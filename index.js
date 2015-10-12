@@ -73,7 +73,7 @@ function createContextStore(options) {
      * Loads the context from the seneca transaction ID.
      */
     function loadContext(seneca, done) {
-        debug('loadContext - start')
+        debug('loadContext - start');
         var transactionId = seneca.fixedargs.tx$;
         var encodedContext = transactionId.split('?')[1];
         var context = encodedContext ? JSON.parse(new Buffer(encodedContext, 'base64').toString('utf8')) : null;
