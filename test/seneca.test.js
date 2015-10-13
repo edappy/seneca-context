@@ -2,12 +2,11 @@ var createSeneca = require('seneca');
 var http = require('http');
 var bodyParser = require('body-parser');
 var express = require('express');
-var createSenecaContext = require('../index');
+var senecaContext = require('../index');
 var vasync = require('vasync');
-var extend = require('extend');
 
 describe('seneca-context', function () {
-    var app, server, seneca1, seneca2, senecaContext;
+    var app, server, seneca1, seneca2;
     var requestId = 'test-request-id-1';
     var expectedContext = {requestId: requestId, test: 'abc'};
 
@@ -22,13 +21,6 @@ describe('seneca-context', function () {
     });
 
     it('should propagate and eventually return the request context', function (done) {
-        senecaContext = createSenecaContext({
-            createContext: function (req, res, context, done) {
-                process.nextTick(done.bind(null, null, extend({test: 'abc'}, context)));
-            },
-            contextHeader: 'x-context'
-        });
-
         // set up seneca1
         // --------------
         seneca1 = createSeneca();
@@ -50,7 +42,12 @@ describe('seneca-context', function () {
 
             done(null, {trace: message.trace + '3', context: message.context$});
         });
-        seneca1.use(senecaContext.saveContextPlugin);
+        seneca1.use(senecaContext.saveContextPlugin, {
+            createContext: function (req, res, context, done) {
+                process.nextTick(done.bind(null, null, seneca1.util.deepextend({test: 'abc'}, context)));
+            },
+            contextHeader: 'x-context'
+        });
         seneca1.use(senecaContext.loadContextPlugin, {pin: 'role:seneca1,cmd:task3'});
         seneca1.act('role:web', {
             use: {

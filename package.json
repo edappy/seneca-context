@@ -20,8 +20,7 @@
   },
   "homepage": "https://github.com/LSEducation/seneca-context",
   "dependencies": {
-    "debug": "^2.2.0",
-    "extend": "^3.0.0"
+    "debug": "^2.2.0"
   },
   "peerDependencies": {
     "seneca": "^0.7.1"

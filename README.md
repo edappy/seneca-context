@@ -14,7 +14,7 @@ See also the `example` and `test` directories.
 
 ```
 var seneca = require('seneca')();
-var senecaContext = require('seneca-context')();
+var senecaContext = require('seneca-context');
 
 seneca.add('role:api,path:work', function (message, done) {
     // context is implicitly propagated to the next seneca action

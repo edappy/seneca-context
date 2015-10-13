@@ -1,7 +1,7 @@
 'use strict';
 
 var seneca = require('seneca')();
-var contextManager = require('../index')();
+var senecaContext = require('../index');
 var app = require('express')();
 var bodyParser = require('body-parser');
 var debug = require('debug')('seneca-context-example');
@@ -17,8 +17,8 @@ seneca.add('role:worker2,cmd:wait', function (message, done) {
     done(null, message.context$);
 });
 
-seneca.use(contextManager.saveContextPlugin);
-seneca.use(contextManager.loadContextPlugin, {pin: 'role:worker2'});
+seneca.use(senecaContext.saveContextPlugin);
+seneca.use(senecaContext.loadContextPlugin, {pin: 'role:worker2'});
 
 seneca.act('role:web', {
     use: {
