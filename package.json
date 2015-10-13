@@ -1,6 +1,6 @@
 {
   "name": "seneca-context",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Generate a context object based on an HTTP request and easily access it any seneca services involved in processing that request.",
   "main": "index.js",
   "scripts": {
@@ -21,8 +21,7 @@
   "homepage": "https://github.com/LSEducation/seneca-context",
   "dependencies": {
     "debug": "^2.2.0",
-    "extend": "^3.0.0",
-    "vasync": "^1.6.3"
+    "extend": "^3.0.0"
   },
   "peerDependencies": {
     "seneca": "^0.7.1"
@@ -32,6 +31,7 @@
     "chai": "^3.3.0",
     "express": "^4.13.3",
     "mocha": "^2.3.3",
-    "seneca": "^0.7.1"
+    "seneca": "^0.7.1",
+    "vasync": "^1.6.3"
   }
 }

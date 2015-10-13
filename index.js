@@ -1,7 +1,6 @@
 'use strict';
 
 var extend = require('extend');
-var vasync = require('vasync');
 var debug = require('debug')('seneca-context');
 
 module.exports = createContextStore;
@@ -9,11 +8,6 @@ module.exports = createContextStore;
 /**
  * A seneca plugin for creating request contexts based on HTTP requests and ensuring that the
  * same context is available in all seneca actions running within the same transaction.
- *
- * @note
- * Currently only one context storage mechanism is supported - embedding the context within seneca transaction IDs.
- * More storage mechanisms (eg. RedisStorage) could be implemented as plugins and configured using the `options`.
- * The mechanism for registering plugins would need to be implemented, too.
  *
  * @param {{
  *   // A function which creates a context based on the HTTP request and response.
@@ -28,9 +22,6 @@ module.exports = createContextStore;
  * }} options
  *
  * @returns {{
- *   // Saves the context for the specified seneca instance.
- *   saveContext: function(seneca, context, function (error)),
- *
  *   // Loads the context for the specified seneca instance.
  *   loadContext: function(seneca, function(error, context)),
  *
@@ -38,7 +29,8 @@ module.exports = createContextStore;
  *   // to all seneca actions within the given transaction.
  *   saveContextPlugin: *,
  *
- *   // A seneca plugin which automatically load the context and exposes it as a property of the incoming message.
+ *   // A seneca plugin which automatically loads the context and exposes it as a `context$` property
+ *   // of the incoming message.
  *   loadContextPlugin: *
  * }}
  */
@@ -49,7 +41,6 @@ function createContextStore(options) {
     }, options);
 
     return {
-        saveContext: saveContext,
         loadContext: loadContext,
         saveContextPlugin: saveContextPlugin,
         loadContextPlugin: loadContextPlugin
@@ -58,28 +49,32 @@ function createContextStore(options) {
     /**
      * Saves the specified context inside the seneca transaction ID.
      */
-    function saveContext(seneca, context, done) {
-        debug('saveContext - start');
+    function saveContext(seneca, context) {
         var transactionIdPrefix = seneca.fixedargs.tx$.split('?')[0];
         var encodedContext = new Buffer(JSON.stringify(context)).toString('base64');
         var transactionId = transactionIdPrefix + '?' + encodedContext;
         seneca.fixedargs.tx$ = transactionId;
-
-        debug('saveContext - end', transactionId, context);
-        process.nextTick(done.bind(null, null));
+        seneca.fixedargs.context$ = context;
+        debug('context saved', transactionId, context);
     }
 
     /**
      * Loads the context from the seneca transaction ID.
      */
-    function loadContext(seneca, done) {
-        debug('loadContext - start');
+    function loadContext(seneca) {
         var transactionId = seneca.fixedargs.tx$;
-        var encodedContext = transactionId.split('?')[1];
-        var context = encodedContext ? JSON.parse(new Buffer(encodedContext, 'base64').toString('utf8')) : null;
 
-        debug('loadContext - end', transactionId, context);
-        process.nextTick(done.bind(null, null, context));
+        if (!seneca.fixedargs.context$) {
+            var encodedContext = transactionId.split('?')[1];
+            var context = encodedContext ? JSON.parse(new Buffer(encodedContext, 'base64').toString('utf8')) : null;
+            seneca.fixedargs.context$ = context;
+            debug('context loaded from tx$ and cached in context$', transactionId, context);
+        } else {
+            debug('context loaded from context$', transactionId, context);
+        }
+
+
+        return seneca.fixedargs.context$;
     }
 
     /**
@@ -107,14 +102,8 @@ function createContextStore(options) {
 
         seneca.wrap(options.pin, function (message, done) {
             var seneca = this;
-            loadContext(seneca, function (error, context) {
-                if (error) {
-                    return done(error);
-                }
-
-                message.context$ = context;
-                seneca.prior(message, done);
-            });
+            message.context$ = loadContext(seneca);
+            seneca.prior(message, done);
         });
 
         return {name: plugin};
@@ -125,20 +114,24 @@ function createContextStore(options) {
      * ensures that it is available to all seneca actions in this transaction.
      */
     function processRequest(req, res, next) {
-        var seneca = req.seneca;
         debug('processing HTTP request');
 
-        vasync.waterfall([
-            createDefaultContext.bind(null, req, res),
-            options.createContext.bind(null, req, res),
-            saveContext.bind(null, seneca)
-        ], next);
+        var seneca = req.seneca;
+
+        options.createContext(req, res, createDefaultContext(req), function(error, context) {
+            if (error) {
+                next(error);
+            } else {
+                saveContext(seneca, context);
+                next();
+            }
+        });
     }
 
     /**
      * Creates a context based on the value of the `options.contextHeader` header.
      */
-    function createDefaultContext(req, res, done) {
+    function createDefaultContext(req) {
         var requestId = req.headers[options.contextHeader];
         var context = {};
 
@@ -147,14 +140,14 @@ function createContextStore(options) {
         }
 
         debug('created default context', context);
-        done(null, context);
+        return context;
     }
 
     /**
      * Default implementation of createContext, which responds with the default context.
      */
     function createContext(req, res, context, done) {
-        debug('default createContext - do nothing', context);
+        debug('default createContext - does nothing', context);
         process.nextTick(done.bind(null, null, context));
     }
 }
