@@ -1,6 +1,7 @@
 'use strict';
 
 var debug = require('debug')('seneca-context');
+var URLSafeBase64 = require('urlsafe-base64');
 
 module.exports = {
     setContextPlugin: setContextPlugin,
@@ -69,18 +70,16 @@ function getContextPlugin(options) {
  */
 function getContext(seneca) {
     var transactionId = seneca.fixedargs.tx$;
+    var context = seneca.fixedargs.context$;
 
-    if (!seneca.fixedargs.context$) {
-        var encodedContext = transactionId.split('?')[1];
-        var context = encodedContext ? JSON.parse(new Buffer(encodedContext, 'base64').toString('utf8')) : null;
-        seneca.fixedargs.context$ = context;
+    if (!context) {
+        context = seneca.fixedargs.context$ = JSON.parse(URLSafeBase64.decode(transactionId).toString('utf8'));
         debug('context loaded from tx$ and cached in context$', transactionId, context);
     } else {
         debug('context loaded from context$', transactionId, context);
     }
 
-
-    return seneca.fixedargs.context$;
+    return context;
 }
 
 /**
@@ -90,12 +89,9 @@ function getContext(seneca) {
  * @param {Object} context A context object
  */
 function setContext(seneca, context) {
-    var transactionIdPrefix = seneca.fixedargs.tx$.split('?')[0];
-    var encodedContext = new Buffer(JSON.stringify(context)).toString('base64');
-    var transactionId = transactionIdPrefix + '?' + encodedContext;
-    seneca.fixedargs.tx$ = transactionId;
+    seneca.fixedargs.tx$ = URLSafeBase64.encode(new Buffer(JSON.stringify(context)));
     seneca.fixedargs.context$ = context;
-    debug('context saved', transactionId, context);
+    debug('context saved', seneca.fixedargs.tx$, context);
 }
 
 /**
