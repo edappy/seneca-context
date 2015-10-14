@@ -114,15 +114,12 @@ function processRequest(options, req, res, next) {
 }
 
 /**
- * Creates a context based on the value of the `options.contextHeader` header.
+ * Creates a context based on the value of the `options.contextHeader` header, or the original value of seneca tx$.
  */
 function createDefaultContext(options, req) {
-    var requestId = req.headers[options.contextHeader];
-    var context = {};
-
-    if (requestId) {
-        context.requestId = requestId;
-    }
+    var context = {
+        requestId: req.headers[options.contextHeader] || req.seneca.fixedargs.tx$
+    };
 
     debug('created default context', context);
     return context;
