@@ -26,10 +26,10 @@ seneca.add('role:worker,cmd:work', function (message, done) {
 });
 
 // Creates the context from HTTP requests and propagates it to all actions within the transaction.
-seneca.use(senecaContext.saveContextPlugin);
+seneca.use(senecaContext.setContextPlugin);
 
 // Adds the `context$` property to the incoming messages matching the `pin`.
-seneca.use(senecaContext.loadContextPlugin, {pin: 'role:worker'});
+seneca.use(senecaContext.getContextPlugin, {pin: 'role:worker'});
 
 seneca.act('role:web', {
     use: {

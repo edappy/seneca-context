@@ -17,8 +17,8 @@ seneca.add('role:worker2,cmd:wait', function (message, done) {
     done(null, message.context$);
 });
 
-seneca.use(senecaContext.saveContextPlugin);
-seneca.use(senecaContext.loadContextPlugin, {pin: 'role:worker2'});
+seneca.use(senecaContext.setContextPlugin);
+seneca.use(senecaContext.getContextPlugin, {pin: 'role:worker2'});
 
 seneca.act('role:web', {
     use: {

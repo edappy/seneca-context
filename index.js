@@ -3,9 +3,9 @@
 var debug = require('debug')('seneca-context');
 
 module.exports = {
-    saveContextPlugin: saveContextPlugin,
-    loadContextPlugin: loadContextPlugin,
-    loadContext: loadContext
+    setContextPlugin: setContextPlugin,
+    getContextPlugin: getContextPlugin,
+    getContext: getContext
 };
 
 /**
@@ -13,7 +13,7 @@ module.exports = {
  *
  * @param {{
  *   // A function which creates a context based on the HTTP request and response.
- *   // It is used by the `saveContextPlugin`.
+ *   // It is used by the `setContextPlugin`.
  *   // The `defaultContext` is `{requestId: req.headers[options.contextHeader]}`.
  *   // Default is noop.
  *   createContext: function (request, response, defaultContext, function(error, context))
@@ -23,7 +23,7 @@ module.exports = {
  *   contextHeader: string
  * }} options
  */
-function saveContextPlugin(options) {
+function setContextPlugin(options) {
     var seneca = this;
     var plugin = 'save-context';
 
@@ -48,13 +48,13 @@ function saveContextPlugin(options) {
  *   pin: string|Object // a seneca pattern to which this plugin should be applied
  * }} options
  */
-function loadContextPlugin(options) {
+function getContextPlugin(options) {
     var seneca = this;
     var plugin = 'load-context';
 
     seneca.wrap(options.pin, function (message, done) {
         var seneca = this;
-        message.context$ = loadContext(seneca);
+        message.context$ = getContext(seneca);
         seneca.prior(message, done);
     });
 
@@ -67,7 +67,7 @@ function loadContextPlugin(options) {
  * @param {seneca} seneca The seneca object, which is the context of a running action.
  * @returns {Object} A context object
  */
-function loadContext(seneca) {
+function getContext(seneca) {
     var transactionId = seneca.fixedargs.tx$;
 
     if (!seneca.fixedargs.context$) {
@@ -89,7 +89,7 @@ function loadContext(seneca) {
  * @param {seneca} seneca The seneca object, which is the context of a running action.
  * @param {Object} context A context object
  */
-function saveContext(seneca, context) {
+function setContext(seneca, context) {
     var transactionIdPrefix = seneca.fixedargs.tx$.split('?')[0];
     var encodedContext = new Buffer(JSON.stringify(context)).toString('base64');
     var transactionId = transactionIdPrefix + '?' + encodedContext;
@@ -111,7 +111,7 @@ function processRequest(options, req, res, next) {
         if (error) {
             next(error);
         } else {
-            saveContext(seneca, context);
+            setContext(seneca, context);
             next();
         }
     });

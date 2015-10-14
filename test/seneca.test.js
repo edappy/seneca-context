@@ -29,26 +29,26 @@ describe('seneca-context', function () {
             message.context$.should.deep.equal(expectedContext);
 
             // load cached context
-            senecaContext.loadContext(this).should.equal(message.context$).and.deep.equal(expectedContext);
+            senecaContext.getContext(this).should.equal(message.context$).and.deep.equal(expectedContext);
 
             this.act('role:seneca2,cmd:task2', {trace: message.trace + '1'}, done);
         });
         seneca1.add('role:seneca1,cmd:task3', function task3(message, done) {
-            // message.context$ is populated here by `senecaContext.loadContextPlugin`
+            // message.context$ is populated here by `senecaContext.getContextPlugin`
             message.context$.should.deep.equal(expectedContext);
 
             // load cached context
-            senecaContext.loadContext(this).should.equal(message.context$).and.deep.equal(expectedContext);
+            senecaContext.getContext(this).should.equal(message.context$).and.deep.equal(expectedContext);
 
             done(null, {trace: message.trace + '3', context: message.context$});
         });
-        seneca1.use(senecaContext.saveContextPlugin, {
+        seneca1.use(senecaContext.setContextPlugin, {
             createContext: function (req, res, context, done) {
                 process.nextTick(done.bind(null, null, seneca1.util.deepextend({test: 'abc'}, context)));
             },
             contextHeader: 'x-context'
         });
-        seneca1.use(senecaContext.loadContextPlugin, {pin: 'role:seneca1,cmd:task3'});
+        seneca1.use(senecaContext.getContextPlugin, {pin: 'role:seneca1,cmd:task3'});
         seneca1.act('role:web', {
             use: {
                 prefix: '/',
@@ -68,11 +68,11 @@ describe('seneca-context', function () {
             expect(message.context$).to.be.undefined;
 
             // load context from tx$
-            var context = senecaContext.loadContext(this);
+            var context = senecaContext.getContext(this);
             context.should.deep.equal(expectedContext);
 
             // load cached context
-            senecaContext.loadContext(this).should.equal(context).and.deep.equal(expectedContext);
+            senecaContext.getContext(this).should.equal(context).and.deep.equal(expectedContext);
 
             // message should not be modified
             expect(message.context$).to.be.undefined;
